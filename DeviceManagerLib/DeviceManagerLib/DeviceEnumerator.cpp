@@ -1,155 +1,148 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "DeviceEnumerator.h"
 #include "DeviceDiagnostic.h"
 
 namespace dm
 {
+	std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback& callback) const
+	{
+		std::vector<DeviceInfo> devices;
 
-std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback& callback) const
-{
-    std::vector<DeviceInfo> devices;
+		HDEVINFO hDevInfo = SetupDiGetClassDevsA(nullptr, nullptr, nullptr, DIGCF_PRESENT | DIGCF_ALLCLASSES);
 
-    HDEVINFO hDevInfo = SetupDiGetClassDevsA(nullptr, nullptr, nullptr, DIGCF_PRESENT | DIGCF_ALLCLASSES);
+		if(hDevInfo == INVALID_HANDLE_VALUE)
+		{
+			std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
 
-    if (hDevInfo == INVALID_HANDLE_VALUE)
-    {
-        std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
+			return devices;
+		}
 
-        return devices;
-    }
+		SP_DEVINFO_DATA devInfoData{};
+		devInfoData.cbSize = sizeof(devInfoData);
+		DWORD i = 0;
 
-    SP_DEVINFO_DATA devInfoData{};
-    devInfoData.cbSize = sizeof(devInfoData);
-    DWORD i = 0;
+		while(SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData))
+		{
+			DeviceInfo info;
+			info.deviceId = getDeviceProperty(hDevInfo, devInfoData, SPDRP_HARDWAREID);
+			info.name = getDeviceProperty(hDevInfo, devInfoData, SPDRP_DEVICEDESC);
+			info.manufacturer = getDeviceProperty(hDevInfo, devInfoData, SPDRP_MFG);
 
-    while (SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData))
-    {
-        DeviceInfo info;
-        info.deviceId = getDeviceProperty(hDevInfo, devInfoData, SPDRP_HARDWAREID);
-        info.name = getDeviceProperty(hDevInfo, devInfoData, SPDRP_DEVICEDESC);
-        info.manufacturer = getDeviceProperty(hDevInfo, devInfoData, SPDRP_MFG);
+			info.deviceClass = getDeviceProperty(hDevInfo, devInfoData, SPDRP_CLASS);
 
-        info.deviceClass = getDeviceProperty(hDevInfo, devInfoData, SPDRP_CLASS);
+			DWORD installState = 0;
+			DWORD bufferSize = sizeof(installState);
 
-        DWORD installState = 0;
-        DWORD bufferSize = sizeof(installState);
+			if(SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, SPDRP_INSTALL_STATE, NULL,
+				reinterpret_cast<PBYTE>(&installState),
+				bufferSize, &bufferSize))
+			{
+				info.status = installState == 0 ? "Installed" : "Not installed";
+			}
+			else
+			{
+				info.status = "Unknown";
+			}
 
-        if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, SPDRP_INSTALL_STATE, NULL,
-            reinterpret_cast<PBYTE>(&installState),
-            bufferSize, &bufferSize))
-        {
-            info.status = installState == 0 ? "Installed" : "Not installed";
-        }
-        else
-        {
-            info.status = "Unknown";
-        }
+			callback(info);
+			devices.push_back(info);
+			++i;
+		}
 
-        callback(info);
-        devices.push_back(info);
-        ++i;
-    }
+		SetupDiDestroyDeviceInfoList(hDevInfo);
 
-    SetupDiDestroyDeviceInfoList(hDevInfo);
+		return devices;
+	}
 
-    return devices;
-}
+	std::string DeviceEnumerator::getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD property) const
+	{
+		DWORD dataType = 0, bufferSize = 0;
 
+		SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, property, &dataType, nullptr, 0, &bufferSize);
 
-std::string DeviceEnumerator::getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD property) const
-{
-    DWORD dataType = 0, bufferSize = 0;
+		if(bufferSize == 0)
+		{
+			return "";
+		}
 
-    SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, property, &dataType, nullptr, 0, &bufferSize);
+		std::vector<char> buffer(bufferSize);
 
-    if (bufferSize == 0)
-    {
-        return "";
-    }
+		if(SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, property, &dataType,
+			reinterpret_cast<PBYTE>(buffer.data()), bufferSize, nullptr))
+		{
+			return std::string(buffer.data());
+		}
 
-    std::vector<char> buffer(bufferSize);
+		return "";
+	}
 
-    if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, property, &dataType,
-        reinterpret_cast<PBYTE>(buffer.data()), bufferSize, nullptr))
-    {
-        return std::string(buffer.data());
-    }
+	void addDependentDevices(DeviceTreeNode& node,
+		const DeviceDiagnostic& diagnostic,
+		std::set<std::string>& trackedIds)
+	{
+		if(trackedIds.find(node.info.deviceId) != trackedIds.end())
+			return;
 
-    return "";
-}
+		trackedIds.insert(node.info.deviceId);
 
+		std::vector<std::string> depIds = diagnostic.getDependentDevices(node.info.deviceId);
+		for(const auto& depId : depIds)
+		{
+			if(trackedIds.find(depId) != trackedIds.end())
+				continue;
 
+			DeviceTreeNode depNode;
+			depNode.info.deviceId = depId;
+			depNode.info.name = depId;
+			node.children.push_back(depNode);
 
-void addDependentDevices(DeviceTreeNode& node,
-    const DeviceDiagnostic& diagnostic,
-    std::set<std::string>& trackedIds)
-{
-    if (trackedIds.find(node.info.deviceId) != trackedIds.end())
-        return;
+			addDependentDevices(node.children.back(), diagnostic, trackedIds);
+		}
+	}
 
-    trackedIds.insert(node.info.deviceId);
+	DeviceTreeNode DeviceEnumerator::getDeviceTree(const DeviceCallback& deviceCallback) const
+	{
+		DeviceTreeNode root;
+		root.info.name = "All devices";
+		root.info.deviceId = "ROOT";
+		root.info.manufacturer = "";
+		root.info.deviceClass = "All";
 
-    std::vector<std::string> depIds = diagnostic.getDependentDevices(node.info.deviceId);
-    for (const auto& depId : depIds)
-    {
-        if (trackedIds.find(depId) != trackedIds.end())
-            continue;
+		std::vector<DeviceInfo> devices = enumerateDevices(deviceCallback);
 
-        DeviceTreeNode depNode;
-        depNode.info.deviceId = depId;
-        depNode.info.name = depId;
-        node.children.push_back(depNode);
+		std::unordered_map<std::string, DeviceTreeNode> groups;
 
-        addDependentDevices(node.children.back(), diagnostic, trackedIds);
-    }
-}
+		for(const auto& dev : devices)
+		{
+			const std::string key = dev.deviceClass.empty() ? "Unknown" : dev.deviceClass;
 
+			if(groups.contains(key))
+			{
+				DeviceTreeNode node;
+				node.info.name = key;
+				node.info.deviceId = key;
 
-DeviceTreeNode DeviceEnumerator::getDeviceTree(const DeviceCallback& deviceCallback) const
-{
-    DeviceTreeNode root;
-    root.info.name = "All devices";
-    root.info.deviceId = "ROOT";
-    root.info.manufacturer = "";
-    root.info.deviceClass = "All";
+				groups[key] = std::move(node);
+			}
 
-    std::vector<DeviceInfo> devices = enumerateDevices(deviceCallback);
+			DeviceTreeNode child{ .info = dev };
+			groups[key].children.emplace_back(child);
+		}
 
-    std::unordered_map<std::string, DeviceTreeNode> groups;
+		for(const auto& group : groups | std::views::values)
+		{
+			root.children.push_back(group);
+		}
 
-    for (const auto& dev : devices)
-    {
-        const std::string key = dev.deviceClass.empty() ? "Unknown" : dev.deviceClass;
+		DeviceDiagnostic diagnostic;
+		std::set<std::string> visited;
 
-        if (groups.contains(key))
-        {
-            DeviceTreeNode node;
-            node.info.name = key;
-            node.info.deviceId = key; 
+		std::function<void(DeviceTreeNode&)> addDeps = [&](DeviceTreeNode& node) {
+			addDependentDevices(node, diagnostic, visited);
+			std::ranges::for_each(node.children, addDeps);
+		};
+		addDeps(root);
 
-            groups[key] = std::move(node);
-        }
-
-        DeviceTreeNode child{.info = dev};
-        groups[key].children.emplace_back(child);
-    }
-
-    for (const auto& group : groups | std::views::values)
-    {
-        root.children.push_back(group);
-    }
-
-    DeviceDiagnostic diagnostic;
-    std::set<std::string> visited;
-
-    std::function<void(DeviceTreeNode&)> addDeps = [&](DeviceTreeNode& node)
-        {
-            addDependentDevices(node, diagnostic, visited);
-            std::ranges::for_each(node.children, addDeps);            
-        };
-    addDeps(root);
-
-    return root;
-}
-
+		return root;
+	}
 } // namespace dm

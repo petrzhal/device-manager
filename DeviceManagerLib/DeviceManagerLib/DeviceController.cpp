@@ -1,144 +1,134 @@
-#include "pch.h"
+﻿#include "pch.h"
 #include "DeviceController.h"
 
-namespace dm 
+namespace dm
 {
+	bool DeviceController::enableDevice(const std::string& deviceId) const
+	{
+		HDEVINFO hDevInfo = NULL;
+		SP_DEVINFO_DATA devInfoData;
 
-bool DeviceController::enableDevice(const std::string &deviceId) const
-{
-    HDEVINFO hDevInfo = NULL;
-    SP_DEVINFO_DATA devInfoData;
+		if(!FindDeviceById(deviceId, hDevInfo, devInfoData))
+		{
+			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
 
-    if (!FindDeviceById(deviceId, hDevInfo, devInfoData))
-    {
-        std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
+			return false;
+		}
 
-        return false;
-    }
+		bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_ENABLE);
+		SetupDiDestroyDeviceInfoList(hDevInfo);
 
-    bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_ENABLE);
-    SetupDiDestroyDeviceInfoList(hDevInfo);
+		return result;
+	}
 
-    return result;
-}
+	bool DeviceController::disableDevice(const std::string& deviceId) const
+	{
+		HDEVINFO hDevInfo = NULL;
+		SP_DEVINFO_DATA devInfoData;
 
+		if(!FindDeviceById(deviceId, hDevInfo, devInfoData))
+		{
+			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
 
-bool DeviceController::disableDevice(const std::string &deviceId) const
-{
-    HDEVINFO hDevInfo = NULL;
-    SP_DEVINFO_DATA devInfoData;
+			return false;
+		}
 
-    if (!FindDeviceById(deviceId, hDevInfo, devInfoData))
-    {
-        std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
+		bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_DISABLE);
+		SetupDiDestroyDeviceInfoList(hDevInfo);
 
-        return false;
-    }
+		return result;
+	}
 
-    bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_DISABLE);
-    SetupDiDestroyDeviceInfoList(hDevInfo);
+	bool DeviceController::updateDriver(const std::string& deviceId, const std::string& driverPackagePath) const
+	{
+		BOOL rebootRequired = FALSE;
+		BOOL res = UpdateDriverForPlugAndPlayDevicesA(NULL, deviceId.c_str(), driverPackagePath.c_str(), 0, &rebootRequired);
 
-    return result;
-}
+		if(!res)
+		{
+			std::cerr << "UpdateDriverForPlugAndPlayDevices failed for device " << deviceId << std::endl;
+		}
 
+		return res;
+	}
 
-bool DeviceController::updateDriver(const std::string &deviceId, const std::string &driverPackagePath) const
-{
-    BOOL rebootRequired = FALSE;
-    BOOL res = UpdateDriverForPlugAndPlayDevicesA(NULL, deviceId.c_str(), driverPackagePath.c_str(), 0, &rebootRequired);
+	bool DeviceController::restoreDeviceSettings(const std::string& deviceId) const
+	{
+		return reinitializeDevice(deviceId);
+	}
 
-    if (!res)
-    {
-        std::cerr << "UpdateDriverForPlugAndPlayDevices failed for device " << deviceId << std::endl;
+	bool DeviceController::reinitializeDevice(const std::string& deviceId) const
+	{
+		if(!disableDevice(deviceId))
+		{
+			std::cerr << "Failed to disable device " << deviceId << std::endl;
 
-        return false;
-    }
+			return false;
+		}
 
-    return true;
-}
+		Sleep(1000);
 
+		if(!enableDevice(deviceId))
+		{
+			std::cerr << "Failed to enable device " << deviceId << std::endl;
 
-bool DeviceController::restoreDeviceSettings(const std::string &deviceId) const
-{
-    return reinitializeDevice(deviceId);
-}
+			return false;
+		}
 
+		return true;
+	}
 
-bool DeviceController::reinitializeDevice(const std::string &deviceId) const
-{
-    if (!disableDevice(deviceId))
-    {
-        std::cerr << "Failed to disable device " << deviceId << std::endl;
+	bool DeviceController::FindDeviceById(const std::string& instanceId, HDEVINFO& hDevInfo, SP_DEVINFO_DATA& devInfoData)
+	{
+		hDevInfo = SetupDiGetClassDevsA(nullptr, nullptr, nullptr, DIGCF_ALLCLASSES | DIGCF_PRESENT);
 
-        return false;
-    }
+		if(hDevInfo == INVALID_HANDLE_VALUE)
+		{
+			std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
 
-    Sleep(1000);
+			return false;
+		}
 
-    if (!enableDevice(deviceId))
-    {
-        std::cerr << "Failed to enable device " << deviceId << std::endl;
+		char buffer[512] = { 0 };
+		devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
 
-        return false;
-    }
+		for(DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); i++)
+		{
+			if(SetupDiGetDeviceInstanceIdA(hDevInfo, &devInfoData, buffer, sizeof(buffer), NULL) && instanceId == std::string(buffer))
+			{
+				return true;
+			}
+		}
 
-    return true;
-}
+		SetupDiDestroyDeviceInfoList(hDevInfo);
 
+		return false;
+	}
 
-bool DeviceController::FindDeviceById(const std::string &instanceId, HDEVINFO &hDevInfo, SP_DEVINFO_DATA &devInfoData)
-{
-    hDevInfo = SetupDiGetClassDevsA(nullptr, nullptr, nullptr, DIGCF_ALLCLASSES | DIGCF_PRESENT);
+	bool DeviceController::ChangeDeviceState(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD stateChange)
+	{
+		SP_PROPCHANGE_PARAMS propChangeParams;
+		memset(&propChangeParams, 0, sizeof(propChangeParams));
+		propChangeParams.ClassInstallHeader.cbSize = sizeof(SP_CLASSINSTALL_HEADER);
+		propChangeParams.ClassInstallHeader.InstallFunction = DIF_PROPERTYCHANGE;
+		propChangeParams.StateChange = stateChange;
+		propChangeParams.Scope = DICS_FLAG_GLOBAL;
+		propChangeParams.HwProfile = 0;
 
-    if (hDevInfo == INVALID_HANDLE_VALUE)
-    {
-        std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
+		if(!SetupDiSetClassInstallParamsA(hDevInfo, &devInfoData, &propChangeParams.ClassInstallHeader, sizeof(propChangeParams)))
+		{
+			std::cerr << "SetupDiSetClassInstallParamsA failed." << std::endl;
 
-        return false;
-    }
+			return false;
+		}
 
-    char buffer[512] = {0};
-    devInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+		if(!SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, hDevInfo, &devInfoData))
+		{
+			std::cerr << "SetupDiCallClassInstaller failed." << std::endl;
 
-    for (DWORD i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData); i++)
-    {
-        if (SetupDiGetDeviceInstanceIdA(hDevInfo, &devInfoData, buffer, sizeof(buffer), NULL) && instanceId == std::string(buffer))
-        {
-            return true;
-        }
-    }
+			return false;
+		}
 
-    SetupDiDestroyDeviceInfoList(hDevInfo);
-
-    return false;
-}
-
-
-bool DeviceController::ChangeDeviceState(HDEVINFO hDevInfo, SP_DEVINFO_DATA &devInfoData, DWORD stateChange)
-{
-    SP_PROPCHANGE_PARAMS propChangeParams;
-    memset(&propChangeParams, 0, sizeof(propChangeParams));
-    propChangeParams.ClassInstallHeader.cbSize = sizeof(SP_CLASSINSTALL_HEADER);
-    propChangeParams.ClassInstallHeader.InstallFunction = DIF_PROPERTYCHANGE;
-    propChangeParams.StateChange = stateChange;
-    propChangeParams.Scope       = DICS_FLAG_GLOBAL;
-    propChangeParams.HwProfile   = 0;
-
-    if (!SetupDiSetClassInstallParamsA(hDevInfo, &devInfoData, &propChangeParams.ClassInstallHeader, sizeof(propChangeParams)))
-    {
-        std::cerr << "SetupDiSetClassInstallParamsA failed." << std::endl;
-
-        return false;
-    }
-
-    if (!SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, hDevInfo, &devInfoData))
-    {
-        std::cerr << "SetupDiCallClassInstaller failed." << std::endl;
-
-        return false;
-    }
-
-    return true;
-}
-
+		return true;
+	}
 } // namespace dm
