@@ -1,272 +1,264 @@
 ﻿#include "pch.h"
 #include "PerformanceMonitor.h"
 
-
 namespace dm
 {
+	double PerformanceMonitor::getCPUUsage() const
+	{
+		PDH_HQUERY cpuQuery;
+		PDH_HCOUNTER cpuTotal;
+		PDH_FMT_COUNTERVALUE counterVal;
 
-    double PerformanceMonitor::getCPUUsage() const
-    {
-        PDH_HQUERY cpuQuery;
-        PDH_HCOUNTER cpuTotal;
-        PDH_FMT_COUNTERVALUE counterVal;
+		PDH_STATUS status = PdhOpenQueryA(NULL, 0, &cpuQuery);
 
-        PDH_STATUS status = PdhOpenQueryA(NULL, 0, &cpuQuery);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhOpenQueryA failed. Error code: " << status << std::endl;
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhOpenQueryA failed. Error code: " << status << std::endl;
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		status = PdhAddEnglishCounterA(cpuQuery, "\\Processor(_Total)\\% Processor Time", 0, &cpuTotal);
 
-        status = PdhAddEnglishCounterA(cpuQuery, "\\Processor(_Total)\\% Processor Time", 0, &cpuTotal);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhAddCounterA failed. Error code: " << status << std::endl;
+			PdhCloseQuery(cpuQuery);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhAddCounterA failed. Error code: " << status << std::endl;
-            PdhCloseQuery(cpuQuery);
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		status = PdhCollectQueryData(cpuQuery);
 
-        status = PdhCollectQueryData(cpuQuery);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhCollectQueryData (first sample) failed. Error code: " << status << std::endl;
+			PdhCloseQuery(cpuQuery);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhCollectQueryData (first sample) failed. Error code: " << status << std::endl;
-            PdhCloseQuery(cpuQuery);
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		std::this_thread::sleep_for(std::chrono::seconds(2));
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
+		status = PdhCollectQueryData(cpuQuery);
 
-        status = PdhCollectQueryData(cpuQuery);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhCollectQueryData (second sample) failed. Error code: " << status << std::endl;
+			PdhCloseQuery(cpuQuery);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhCollectQueryData (second sample) failed. Error code: " << status << std::endl;
-            PdhCloseQuery(cpuQuery);
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		status = PdhGetFormattedCounterValue(cpuTotal, PDH_FMT_DOUBLE, NULL, &counterVal);
 
-        status = PdhGetFormattedCounterValue(cpuTotal, PDH_FMT_DOUBLE, NULL, &counterVal);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhGetFormattedCounterValue failed. Error code: " << status << std::endl;
+			PdhCloseQuery(cpuQuery);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhGetFormattedCounterValue failed. Error code: " << status << std::endl;
-            PdhCloseQuery(cpuQuery);
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		PdhCloseQuery(cpuQuery);
 
-        PdhCloseQuery(cpuQuery);
+		return counterVal.doubleValue;
+	}
 
-        return counterVal.doubleValue;
-    }
+	double PerformanceMonitor::getMemoryUsage() const
+	{
+		MEMORYSTATUSEX memStatus;
+		memStatus.dwLength = sizeof(MEMORYSTATUSEX);
 
-    double PerformanceMonitor::getMemoryUsage() const
-    {
-        MEMORYSTATUSEX memStatus;
-        memStatus.dwLength = sizeof(MEMORYSTATUSEX);
+		if(!GlobalMemoryStatusEx(&memStatus))
+		{
+			std::cerr << "GlobalMemoryStatusEx failed." << std::endl;
 
-        if (!GlobalMemoryStatusEx(&memStatus))
-        {
-            std::cerr << "GlobalMemoryStatusEx failed." << std::endl;
+			return -1.0;
+		}
 
-            return -1.0;
-        }
+		uint64_t totalPhys = memStatus.ullTotalPhys;
+		uint64_t usedPhys = memStatus.ullTotalPhys - memStatus.ullAvailPhys;
+		double percentUsage = (static_cast<double>(usedPhys) / totalPhys) * 100.0;
 
-        uint64_t totalPhys = memStatus.ullTotalPhys;
-        uint64_t usedPhys = memStatus.ullTotalPhys - memStatus.ullAvailPhys;
-        double percentUsage = (static_cast<double>(usedPhys) / totalPhys) * 100.0;
+		return percentUsage;
+	}
 
-        return percentUsage;
-    }
+	PerformanceMonitor::DisksStorage PerformanceMonitor::getDiskUsage() const
+	{
+		const auto updateDiskInfo = [](const std::string& disk) -> DisksType {
+			ULARGE_INTEGER freeBytesAvailable;
+			ULARGE_INTEGER totalNumberOfBytes;
+			ULARGE_INTEGER totalNumberOfFreeBytes;
 
-    PerformanceMonitor::DisksStorage PerformanceMonitor::getDiskUsage() const
-    {
-        const auto updateDiskInfo = [](const std::string &disk) -> DisksType
-        {
-            ULARGE_INTEGER freeBytesAvailable;
-            ULARGE_INTEGER totalNumberOfBytes;
-            ULARGE_INTEGER totalNumberOfFreeBytes;
+			if(!GetDiskFreeSpaceExA(disk.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes))
+			{
+				std::println(std::cerr, "GetDiskFreeSpaceEx failed for {}", disk);
 
-            if (!GetDiskFreeSpaceExA(disk.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes))
-            {
-                std::println(std::cerr, "GetDiskFreeSpaceEx failed for {}", disk);
+				return {};
+			}
 
-                return {};
-            }
+			uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
+			float usagePercent = (totalNumberOfBytes.QuadPart > 0)
+				? (static_cast<float>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0f
+				: 0.0f;
 
-            uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
-            float usagePercent = (totalNumberOfBytes.QuadPart > 0)
-                                     ? (static_cast<float>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0f
-                                     : 0.0f;
-
-            return std::make_pair(disk, usagePercent);
-        };
+			return std::make_pair(disk, usagePercent);
+		};
 
-        static const auto driveMask = GetLogicalDrives();
+		static const auto driveMask = GetLogicalDrives();
 
-        if (driveMask == 0)
-        {
-            std::println(std::cerr, "GetLogicalDrives failed");
+		if(driveMask == 0)
+		{
+			std::println(std::cerr, "GetLogicalDrives failed");
 
-            return DisksStorage{};
-        }
+			return DisksStorage{};
+		}
 
-        static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) | std::views::filter([&](int i) -> bool
-                                                                                                   { return driveMask & (1 << i); }) |
-                                         std::views::transform([](int diskN) -> std::string
-                                                               { return std::format("{}:\\", static_cast<char>('A' + diskN)); }) |
-                                         std::views::filter([](std::string disk) -> bool
-                                                            { return GetDriveTypeA(disk.data()) == DRIVE_FIXED; }) |
-                                         std::ranges::to<std::vector>();
+		static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) | std::views::filter([&](int i) -> bool { return driveMask & (1 << i); }) |
+			std::views::transform([](int diskN) -> std::string { return std::format("{}:\\", static_cast<char>('A' + diskN)); }) |
+			std::views::filter([](std::string disk) -> bool { return GetDriveTypeA(disk.data()) == DRIVE_FIXED; }) |
+			std::ranges::to<std::vector>();
 
-        return existedDisks | std::views::transform(updateDiskInfo) | std::ranges::to<DisksStorage>();
-    }
+		return existedDisks | std::views::transform(updateDiskInfo) | std::ranges::to<DisksStorage>();
+	}
 
-    double PerformanceMonitor::getGPUUsage() const
-    {
-        const char *command =
-            "nvidia-smi --query-gpu=utilization.gpu,utilization.encoder,utilization.decoder "
-            "--format=csv,noheader,nounits";
+	double PerformanceMonitor::getGPUUsage() const
+	{
+		const char* command =
+			"nvidia-smi --query-gpu=utilization.gpu,utilization.encoder,utilization.decoder "
+			"--format=csv,noheader,nounits";
 
-        FILE *pipe = _popen(command, "r");
+		FILE* pipe = _popen(command, "r");
 
-        if (!pipe)
-        {
-            throw std::runtime_error("Failed to open pipe using nvidia-smi");
-        }
+		if(!pipe)
+		{
+			throw std::runtime_error("Failed to open pipe using nvidia-smi");
+		}
 
-        char buffer[256];
-        std::string result;
+		char buffer[256];
+		std::string result;
 
-        while (fgets(buffer, sizeof(buffer), pipe) != nullptr)
-        {
-            result += buffer;
-        }
+		while(fgets(buffer, sizeof(buffer), pipe) != nullptr)
+		{
+			result += buffer;
+		}
 
-        _pclose(pipe);
+		_pclose(pipe);
 
-        std::istringstream iss(result);
-        std::string token;
-        double values[3] = {0.0, 0.0, 0.0};
-        int index = 0;
+		std::istringstream iss(result);
+		std::string token;
+		double values[3] = { 0.0, 0.0, 0.0 };
+		int index = 0;
 
-        while (std::getline(iss, token, ',') && index < 3)
-        {
-            token.erase(std::remove(token.begin(), token.end(), ' '), token.end());
+		while(std::getline(iss, token, ',') && index < 3)
+		{
+			token.erase(std::remove(token.begin(), token.end(), ' '), token.end());
 
-            try
-            {
-                values[index] = std::stod(token);
-            }
-            catch (...)
-            {
-                values[index] = 0.0;
-            }
+			try
+			{
+				values[index] = std::stod(token);
+			} catch(...)
+			{
+				values[index] = 0.0;
+			}
 
-            ++index;
-        }
+			++index;
+		}
 
-        double aggregated = max(max(values[0], values[1]), values[2]);
+		double aggregated = max(max(values[0], values[1]), values[2]);
 
-        if (aggregated > 100.0)
-        {
-            aggregated = 100.0;
-        }
+		if(aggregated > 100.0)
+		{
+			aggregated = 100.0;
+		}
 
-        return aggregated;
-    }
+		return aggregated;
+	}
 
-    int PerformanceMonitor::getNetworkUsage() const
-    {
-        PDH_HQUERY query;
-        PDH_HCOUNTER counter;
-        PDH_STATUS status;
+	int PerformanceMonitor::getNetworkUsage() const
+	{
+		PDH_HQUERY query;
+		PDH_HCOUNTER counter;
+		PDH_STATUS status;
 
-        status = PdhOpenQueryA(NULL, 0, &query);
+		status = PdhOpenQueryA(NULL, 0, &query);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhOpenQueryA failed with error code: " << status << std::endl;
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhOpenQueryA failed with error code: " << status << std::endl;
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        status = PdhAddEnglishCounterA(query, "\\Network Interface(*)\\Bytes Total/sec", 0, &counter);
+		status = PdhAddEnglishCounterA(query, "\\Network Interface(*)\\Bytes Total/sec", 0, &counter);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhAddCounterA failed for counter \\Network Interface(*)\\Bytes Total/sec"
-                      << " with error code: " << status << std::endl;
-            PdhCloseQuery(query);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhAddCounterA failed for counter \\Network Interface(*)\\Bytes Total/sec"
+				<< " with error code: " << status << std::endl;
+			PdhCloseQuery(query);
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        status = PdhCollectQueryData(query);
+		status = PdhCollectQueryData(query);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "First PdhCollectQueryData failed with error code: " << status << std::endl;
-            PdhCloseQuery(query);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "First PdhCollectQueryData failed with error code: " << status << std::endl;
+			PdhCloseQuery(query);
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        Sleep(1000);
+		Sleep(1000);
 
-        status = PdhCollectQueryData(query);
+		status = PdhCollectQueryData(query);
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "Second PdhCollectQueryData failed with error code: " << status << std::endl;
-            PdhCloseQuery(query);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "Second PdhCollectQueryData failed with error code: " << status << std::endl;
+			PdhCloseQuery(query);
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        DWORD bufferSize = 0;
-        DWORD itemCount = 0;
-        status = PdhGetFormattedCounterArrayA(counter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, NULL);
+		DWORD bufferSize = 0;
+		DWORD itemCount = 0;
+		status = PdhGetFormattedCounterArrayA(counter, PDH_FMT_DOUBLE, &bufferSize, &itemCount, NULL);
 
-        if (status != PDH_MORE_DATA && status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhGetFormattedCounterArrayA failed to get buffer size, error code: " << status << std::endl;
-            PdhCloseQuery(query);
+		if(status != PDH_MORE_DATA && status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhGetFormattedCounterArrayA failed to get buffer size, error code: " << status << std::endl;
+			PdhCloseQuery(query);
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        std::vector<BYTE> buffer(bufferSize);
+		std::vector<BYTE> buffer(bufferSize);
 
-        status = PdhGetFormattedCounterArrayA(counter, PDH_FMT_DOUBLE, &bufferSize, &itemCount,
-                                              reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A *>(buffer.data()));
+		status = PdhGetFormattedCounterArrayA(counter, PDH_FMT_DOUBLE, &bufferSize, &itemCount,
+			reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A*>(buffer.data()));
 
-        if (status != ERROR_SUCCESS)
-        {
-            std::cerr << "PdhGetFormattedCounterArrayA failed to retrieve data, error code: " << status << std::endl;
-            PdhCloseQuery(query);
+		if(status != ERROR_SUCCESS)
+		{
+			std::cerr << "PdhGetFormattedCounterArrayA failed to retrieve data, error code: " << status << std::endl;
+			PdhCloseQuery(query);
 
-            return -1.0;
-        }
+			return -1;
+		}
 
-        double totalNetworkUsage = 0.0;
-        PDH_FMT_COUNTERVALUE_ITEM_A *items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A *>(buffer.data());
+		double totalNetworkUsage = 0.0;
+		PDH_FMT_COUNTERVALUE_ITEM_A* items = reinterpret_cast<PDH_FMT_COUNTERVALUE_ITEM_A*>(buffer.data());
 
-        for (DWORD i = 0; i < itemCount; i++)
-        {
-            totalNetworkUsage += items[i].FmtValue.doubleValue;
-        }
+		for(DWORD i = 0; i < itemCount; i++)
+		{
+			totalNetworkUsage += items[i].FmtValue.doubleValue;
+		}
 
-        PdhCloseQuery(query);
+		PdhCloseQuery(query);
 
-        return static_cast<int>(totalNetworkUsage);
-    }
-
+		return static_cast<int>(totalNetworkUsage);
+	}
 } // namespace dm
