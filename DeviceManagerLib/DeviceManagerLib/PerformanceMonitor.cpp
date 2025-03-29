@@ -115,12 +115,15 @@ namespace dm
 			return DisksStorage{};
 		}
 
-		static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) | std::views::filter([&](int i) -> bool { return driveMask & (1 << i); }) |
+		static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) |
+			std::views::filter([&](int i) -> bool { return driveMask & (1 << i); }) |
 			std::views::transform([](int diskN) -> std::string { return std::format("{}:\\", static_cast<char>('A' + diskN)); }) |
 			std::views::filter([](std::string disk) -> bool { return GetDriveTypeA(disk.data()) == DRIVE_FIXED; }) |
 			std::ranges::to<std::vector>();
 
-		return existedDisks | std::views::transform(updateDiskInfo) | std::ranges::to<DisksStorage>();
+		return existedDisks | 
+			std::views::transform(updateDiskInfo) | 
+			std::ranges::to<DisksStorage>();
 	}
 
 	double PerformanceMonitor::getGPUUsage() const

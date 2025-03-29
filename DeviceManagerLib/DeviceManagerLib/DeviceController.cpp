@@ -47,11 +47,9 @@ namespace dm
 		if(!res)
 		{
 			std::cerr << "UpdateDriverForPlugAndPlayDevices failed for device " << deviceId << std::endl;
-
-			return false;
 		}
 
-		return true;
+		return res;
 	}
 
 	bool DeviceController::restoreDeviceSettings(const std::string& deviceId) const
