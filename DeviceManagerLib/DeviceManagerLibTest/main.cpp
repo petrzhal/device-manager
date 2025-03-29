@@ -23,7 +23,7 @@ void printDeviceTree(const dm::DeviceTreeNode& node, int indent = 0)
 
     for (const auto& child : node.children) 
     {
-        printDeviceTree(child, indent + 2);
+        printDeviceTree(child, indent + 1);
     }
 }
 

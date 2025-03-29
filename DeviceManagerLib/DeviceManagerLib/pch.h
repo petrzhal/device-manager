@@ -27,4 +27,7 @@
 #include <ranges>
 #include <algorithm>
 #include <print>
-#include <format>
+#include <format> 
+
+// json
+#include <nlohmann/json.hpp>
