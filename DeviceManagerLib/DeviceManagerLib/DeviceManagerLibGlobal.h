@@ -1,14 +1,7 @@
-#ifndef DEVICE_MANAGER_LIB_GLOBAL_H
-#define DEVICE_MANAGER_LIB_GLOBAL_H
+#pragma once
 
-#ifdef _WIN32
-	#ifdef DEVICE_MANAGER_LIB_LIBRARY
-		#define DEVICE_MANAGER_LIB_EXPORT __declspec(dllexport)
-	#else
-		#define DEVICE_MANAGER_LIB_EXPORT __declspec(dllimport)
-	#endif
+#ifdef DEVICE_MANAGER_LIB_LIBRARY
+	#define DEVICE_MANAGER_LIB_EXPORT __declspec(dllexport)
 #else
-	#define DEVICE_MANAGER_LIB_EXPORT
+	#define DEVICE_MANAGER_LIB_EXPORT __declspec(dllimport)
 #endif
-
-#endif // DEVICE_MANAGER_LIB_GLOBAL_H

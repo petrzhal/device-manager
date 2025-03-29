@@ -6,7 +6,6 @@ namespace dm
 
 bool DeviceController::enableDevice(const std::string &deviceId) const
 {
-#ifdef _WIN32
     HDEVINFO hDevInfo = NULL;
     SP_DEVINFO_DATA devInfoData;
 
@@ -21,15 +20,11 @@ bool DeviceController::enableDevice(const std::string &deviceId) const
     SetupDiDestroyDeviceInfoList(hDevInfo);
 
     return result;
-#else
-    return false;
-#endif
 }
 
 
 bool DeviceController::disableDevice(const std::string &deviceId) const
 {
-#ifdef _WIN32
     HDEVINFO hDevInfo = NULL;
     SP_DEVINFO_DATA devInfoData;
 
@@ -44,15 +39,11 @@ bool DeviceController::disableDevice(const std::string &deviceId) const
     SetupDiDestroyDeviceInfoList(hDevInfo);
 
     return result;
-#else
-    return false;
-#endif
 }
 
 
 bool DeviceController::updateDriver(const std::string &deviceId, const std::string &driverPackagePath) const
 {
-#ifdef _WIN32
     BOOL rebootRequired = FALSE;
     BOOL res = UpdateDriverForPlugAndPlayDevicesA(NULL, deviceId.c_str(), driverPackagePath.c_str(), 0, &rebootRequired);
 
@@ -64,9 +55,6 @@ bool DeviceController::updateDriver(const std::string &deviceId, const std::stri
     }
 
     return true;
-#else
-    return false;
-#endif
 }
 
 
@@ -78,7 +66,6 @@ bool DeviceController::restoreDeviceSettings(const std::string &deviceId) const
 
 bool DeviceController::reinitializeDevice(const std::string &deviceId) const
 {
-#ifdef _WIN32
     if (!disableDevice(deviceId))
     {
         std::cerr << "Failed to disable device " << deviceId << std::endl;
@@ -96,9 +83,6 @@ bool DeviceController::reinitializeDevice(const std::string &deviceId) const
     }
 
     return true;
-#else
-    return false;
-#endif
 }
 
 

@@ -72,19 +72,23 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\Temp\$(Configuration)$(PlatformShortName)\</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\Temp\$(Configuration)$(PlatformShortName)\</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\Temp\$(Configuration)$(PlatformShortName)\</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)\</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\Temp\$(Configuration)$(PlatformShortName)\</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -103,6 +107,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>setupapi.lib;wbemuuid.lib;newdev.lib;cfgmgr32.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -130,6 +135,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>setupapi.lib;wbemuuid.lib;newdev.lib;cfgmgr32.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -150,6 +156,7 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
+      <AdditionalDependencies>setupapi.lib;wbemuuid.lib;newdev.lib;cfgmgr32.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -178,6 +185,7 @@
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
       <LinkTimeCodeGeneration>UseFastLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <AdditionalDependencies>setupapi.lib;wbemuuid.lib;newdev.lib;cfgmgr32.lib;pdh.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -196,6 +204,8 @@
     <ClCompile Include="DeviceController.cpp" />
     <ClCompile Include="DeviceDiagnostic.cpp" />
     <ClCompile Include="DeviceEnumerator.cpp" />
+    <ClCompile Include="DeviceInfo.cpp" />
+    <ClCompile Include="DeviceTreeNode.cpp" />
     <ClCompile Include="pch.cpp" />
     <ClCompile Include="PerformanceMonitor.cpp" />
   </ItemGroup>

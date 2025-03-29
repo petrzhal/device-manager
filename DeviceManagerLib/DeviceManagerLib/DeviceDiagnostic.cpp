@@ -3,11 +3,6 @@
 
 namespace dm {
 
-DeviceDiagnostic::DeviceDiagnostic() = default;
-
-DeviceDiagnostic::~DeviceDiagnostic() = default;
-
-
 std::vector<std::string> DeviceDiagnostic::getDependentDevices(const std::string &deviceId) const
 {
     std::vector<std::string> dependentDevices;
