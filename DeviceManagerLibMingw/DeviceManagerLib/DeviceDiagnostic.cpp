@@ -11,7 +11,7 @@ namespace dm
 
 		if(cr != CR_SUCCESS)
 		{
-			std::cerr << "CM_Locate_DevNodeA failed for deviceId: " << deviceId << std::endl;
+//			std::cerr << "CM_Locate_DevNodeA failed for deviceId: " << deviceId << std::endl;
 
 			return dependentDevices;
 		}
@@ -37,7 +37,7 @@ namespace dm
 			}
 			else
 			{
-				std::cerr << "CM_Get_Device_IDA failed for a child device." << std::endl;
+//				std::cerr << "CM_Get_Device_IDA failed for a child device." << std::endl;
 			}
 
 			DEVINST sibling;

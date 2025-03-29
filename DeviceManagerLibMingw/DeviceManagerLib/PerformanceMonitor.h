@@ -5,11 +5,12 @@
 namespace dm
 {
 
-class DEVICE_MANAGER_LIB_EXPORT PerformanceMonitor
+class PerformanceMonitor
 {
+public:
     using DisksType = std::pair<std::string, float>;
     using DisksStorage = std::map<std::string, float>;
-public:
+
     PerformanceMonitor() = default;
     ~PerformanceMonitor() = default;
 

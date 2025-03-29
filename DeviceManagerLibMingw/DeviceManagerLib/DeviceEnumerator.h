@@ -6,8 +6,9 @@
 
 namespace dm
 {
-	class DEVICE_MANAGER_LIB_EXPORT DeviceEnumerator
+    class DeviceEnumerator
 	{
+    public:
 		using DeviceCallback = std::function<void(const DeviceInfo&)>;
 
 	public:
@@ -16,7 +17,7 @@ namespace dm
 
 		[[nodiscard]] std::vector<DeviceInfo> enumerateDevices(const DeviceCallback& callback) const;
 
-		[[nodiscard]] DeviceTreeNode getDeviceTree(const DeviceCallback& deviceCallback = nullptr) const;
+        [[nodiscard]] DeviceTreeNode getDeviceTree(const DeviceCallback& deviceCallback = nullptr) const;
 
 	private:
 		std::string getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD property) const;

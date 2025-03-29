@@ -1,5 +1,5 @@
 #include "devicetreewidget.h"
-#include "DeviceManagerLib.h" // Публичный API вашей библиотеки
+#include "DeviceManagerLib.h"
 #include <QVBoxLayout>
 #include <QPushButton>
 #include <QString>
@@ -44,9 +44,9 @@ void DeviceTreeWidget::refreshDevices()
 {
     m_treeWidget->clear();
 
-    // Используем класс DeviceEnumerator, чтобы получить дерево устройств.
     DeviceEnumerator enumerator;
-    DeviceTreeNode tree = enumerator.getDeviceTree();
+
+    DeviceTreeNode tree = enumerator.getDeviceTree([](const DeviceInfo& _){});
     addTreeItem(m_treeWidget, tree);
 
     m_treeWidget->expandAll();
