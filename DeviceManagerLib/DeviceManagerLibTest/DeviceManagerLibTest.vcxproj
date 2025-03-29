@@ -72,12 +72,12 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)\</IntDir>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)\</IntDir>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
@@ -87,7 +87,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <OutDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\</OutDir>
-    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)</IntDir>
+    <IntDir>$(SolutionDir)Build\$(Configuration)$(PlatformShortName)\Temp\$(ProjectName)\</IntDir>
     <RunCodeAnalysis>true</RunCodeAnalysis>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
