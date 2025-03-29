@@ -1,4 +1,4 @@
-#include "DeviceManagerLib.h"
+﻿#include "DeviceManagerLib.h"
 
 #include <iostream>
 #include <string>
@@ -7,6 +7,7 @@
 #include <thread>
 #include <syncstream>
 #include <print>
+#include <chrono>
 
 void printDeviceTree(const dm::DeviceTreeNode& node, int indent = 0)
 {
@@ -31,9 +32,13 @@ void printDeviceTree(const dm::DeviceTreeNode& node, int indent = 0)
 void monitorPerformance() {
     dm::PerformanceMonitor perfMonitor;
 
+    constexpr static auto tickDelay = std::chrono::seconds(1);
+
     while (true) 
     {
         system("cls");
+
+        const auto start = std::chrono::high_resolution_clock::now();
 
         std::println("{:^100}", "System Perfomance");
         std::println("CPU usage: {}%", perfMonitor.getCPUUsage());
@@ -47,7 +52,9 @@ void monitorPerformance() {
         std::println("GPU usage: {}%", perfMonitor.getGPUUsage() );
         std::println("Network usage: {}B/sec", perfMonitor.getNetworkUsage());
 
-        std::this_thread::sleep_for(std::chrono::seconds(1));
+        const auto diff = std::chrono::high_resolution_clock::now() - start;
+
+        std::this_thread::sleep_for(tickDelay - diff);
     }
 }
 
@@ -56,22 +63,22 @@ int main()
 {
     setlocale(0, "");
 
-    dm::DeviceEnumerator enumerator;
-    std::vector<dm::DeviceInfo> devices;
+    //dm::DeviceEnumerator enumerator;
+    //std::vector<dm::DeviceInfo> devices;
 
-    auto callback = [&devices](const dm::DeviceInfo& device)
-            {
-                std::println("------------------------------------------");
-                std::cout << device << '\n';
+    //auto callback = [&devices](const dm::DeviceInfo& device)
+    //        {
+    //            std::println("------------------------------------------");
+    //            std::cout << device << '\n';
 
-                devices.push_back(device);
-            };
+    //            devices.push_back(device);
+    //        };
 
-    dm::DeviceTreeNode root = enumerator.getDeviceTree(callback);
+    //dm::DeviceTreeNode root = enumerator.getDeviceTree(callback);
 
-    std::println("\nRoot device name: ", root.info.name);
-    std::println("Device Tree:");
-    printDeviceTree(root);
+    //std::println("\nRoot device name: ", root.info.name);
+    //std::println("Device Tree:");
+    //printDeviceTree(root);
 
 
     //vector<DeviceInfo> devices;
@@ -108,7 +115,7 @@ int main()
     //cout << "Device Tree:\n";
     //printDeviceTree(root);
 
-    //std::jthread perfThread(monitorPerformance);
+    std::jthread perfThread(monitorPerformance);
 
     //DeviceDiagnostic diagnostic;
 

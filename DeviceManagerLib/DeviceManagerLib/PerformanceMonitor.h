@@ -1,4 +1,4 @@
-#pragma once
+﻿#pragma once
 
 #include "DeviceManagerLibGlobal.h"
 
@@ -7,13 +7,15 @@ namespace dm
 
 class DEVICE_MANAGER_LIB_EXPORT PerformanceMonitor
 {
+    using DisksType = std::pair<std::string, float>;
+    using DisksStorage = std::map<std::string, float>;
 public:
-    PerformanceMonitor();
-    ~PerformanceMonitor();
+    PerformanceMonitor() = default;
+    ~PerformanceMonitor() = default;
 
     double getCPUUsage() const;
     double getMemoryUsage() const;
-    std::map<std::string, double> getDiskUsage() const;
+    DisksStorage getDiskUsage() const;
     double getGPUUsage() const;
     double getNetworkUsage() const;
 };

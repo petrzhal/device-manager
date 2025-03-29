@@ -1,75 +1,29 @@
-#include "pch.h"
+п»ї#include "pch.h"
 #include "PerformanceMonitor.h"
 
 namespace dm {
 
-PerformanceMonitor::PerformanceMonitor() = default;
-
-PerformanceMonitor::~PerformanceMonitor() = default;
-
-
 double PerformanceMonitor::getCPUUsage() const
 {
-    PDH_HQUERY cpuQuery;
-    PDH_HCOUNTER cpuTotal;
+    PDH_HQUERY query;
+    PDH_HCOUNTER counter;
+
+    PdhOpenQuery(NULL, NULL, &query);
+
+    PdhAddEnglishCounterA(query, "\\Processor(_Total)\\% Processor Time", NULL, &counter);
+
+    PdhCollectQueryData(query);
+
+    PdhCollectQueryData(query);
+
     PDH_FMT_COUNTERVALUE counterVal;
+    PdhGetFormattedCounterValue(counter, PDH_FMT_DOUBLE, NULL, &counterVal);
 
-    PDH_STATUS status = PdhOpenQueryA(NULL, 0, &cpuQuery);
-
-    if (status != ERROR_SUCCESS)
-    {
-        std::cerr << "PdhOpenQueryA failed. Error code: " << status << std::endl;
-
-        return -1.0;
-    }
-
-    status = PdhAddCounterA(cpuQuery, "\\Процессор(_Total)\\% загруженности процессора", 0, &cpuTotal);
-
-    if (status != ERROR_SUCCESS)
-    {
-        std::cerr << "PdhAddCounterA failed. Error code: " << status << std::endl;
-        PdhCloseQuery(cpuQuery);
-
-        return -1.0;
-    }
-
-    status = PdhCollectQueryData(cpuQuery);
-
-    if (status != ERROR_SUCCESS)
-    {
-        std::cerr << "PdhCollectQueryData (first sample) failed. Error code: " << status << std::endl;
-        PdhCloseQuery(cpuQuery);
-
-        return -1.0;
-    }
-
-    Sleep(1000);
-
-    status = PdhCollectQueryData(cpuQuery);
-
-    if (status != ERROR_SUCCESS)
-    {
-        std::cerr << "PdhCollectQueryData (second sample) failed. Error code: " << status << std::endl;
-        PdhCloseQuery(cpuQuery);
-
-        return -1.0;
-    }
-
-    status = PdhGetFormattedCounterValue(cpuTotal, PDH_FMT_DOUBLE, NULL, &counterVal);
-
-    if (status != ERROR_SUCCESS)
-    {
-        std::cerr << "PdhGetFormattedCounterValue failed. Error code: " << status << std::endl;
-        PdhCloseQuery(cpuQuery);
-
-        return -1.0;
-    }
-
-    PdhCloseQuery(cpuQuery);
+    PdhRemoveCounter(counter);
+    PdhCloseQuery(query);
 
     return counterVal.doubleValue;
 }
-
 
 
 double PerformanceMonitor::getMemoryUsage() const
@@ -92,57 +46,45 @@ double PerformanceMonitor::getMemoryUsage() const
 }
 
 
-std::map<std::string, double> PerformanceMonitor::getDiskUsage() const
+PerformanceMonitor::DisksStorage PerformanceMonitor::getDiskUsage() const
 {
-    DWORD driveMask = GetLogicalDrives();
+    const auto updateDiskInfo = [](const std::string& disk) -> DisksType {
+        ULARGE_INTEGER freeBytesAvailable;
+        ULARGE_INTEGER totalNumberOfBytes;
+        ULARGE_INTEGER totalNumberOfFreeBytes;
+
+        if(!GetDiskFreeSpaceExA(disk.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes)) {
+            std::println(std::cerr, "GetDiskFreeSpaceEx failed for {}", disk);
+
+            return {};
+        }
+
+        uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
+        float usagePercent = (totalNumberOfBytes.QuadPart > 0)
+            ? (static_cast<float>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0f
+            : 0.0f;
+
+        return std::make_pair(disk, usagePercent);
+    };
+
+    static const auto driveMask = GetLogicalDrives();
 
     if (driveMask == 0)
     {
-        std::cerr << "GetLogicalDrives failed." << std::endl;
+        std::println(std::cerr, "GetLogicalDrives failed");
 
-        return std::map<std::string, double>();
+        return DisksStorage{};
     }
 
-    std::map<std::string, double> disksUsage;
+    static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) 
+        | std::views::filter([&](int i) -> bool { return driveMask & (1 << i); })
+        | std::views::transform([](int diskN) -> std::string { return std::format("{}:\\", static_cast<char>('A' + diskN)); })
+        | std::views::filter([](std::string disk) -> bool { return GetDriveTypeA(disk.data()) == DRIVE_FIXED; })
+        | std::ranges::to<std::vector>();
 
-    for (int i = 0; i < 26; i++) 
-    {
-        if (driveMask & (1 << i)) 
-        {
-            char driveLetter = 'A' + i;
-            std::string drivePath;
-            drivePath.push_back(driveLetter);
-            drivePath.append(":\\");
-
-            if (GetDriveTypeA(drivePath.c_str()) != DRIVE_FIXED) 
-            {
-                continue;
-            }
-
-            ULARGE_INTEGER freeBytesAvailable;
-            ULARGE_INTEGER totalNumberOfBytes;
-            ULARGE_INTEGER totalNumberOfFreeBytes;
-
-            if (!GetDiskFreeSpaceExA(drivePath.c_str(),
-                &freeBytesAvailable,
-                &totalNumberOfBytes,
-                &totalNumberOfFreeBytes))
-            {
-                std::cerr << "GetDiskFreeSpaceExA failed for " << drivePath << std::endl;
-
-                continue;
-            }
-
-            uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
-            double usagePercent = (totalNumberOfBytes.QuadPart > 0) ?
-                (static_cast<double>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0 :
-                0.0;
-
-            disksUsage.emplace(drivePath, usagePercent);
-        }
-    }
-
-    return disksUsage;
+    return existedDisks 
+        | std::views::transform(updateDiskInfo)
+        | std::ranges::to<DisksStorage>();
 }
 
 
@@ -213,11 +155,11 @@ double PerformanceMonitor::getNetworkUsage() const
         return -1.0;
     }
 
-    status = PdhAddCounterA(query, "\\Сетевой адаптер(*)\\Всего байт/с", 0, &counter);
+    status = PdhAddCounterA(query, "\\Г‘ГҐГІГҐГўГ®Г© Г Г¤Г ГЇГІГҐГ°(*)\\Г‚Г±ГҐГЈГ® ГЎГ Г©ГІ/Г±", 0, &counter);
 
     if (status != ERROR_SUCCESS) 
     {
-        std::cerr << "PdhAddCounterA failed for counter \\Сетевой адаптер(*)\\Всего байт/с"
+        std::cerr << "PdhAddCounterA failed for counter \\Г‘ГҐГІГҐГўГ®Г© Г Г¤Г ГЇГІГҐГ°(*)\\Г‚Г±ГҐГЈГ® ГЎГ Г©ГІ/Г±"
             << " with error code: " << status << std::endl;
         PdhCloseQuery(query);
 
