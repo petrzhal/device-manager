@@ -1,11 +1,9 @@
 ﻿#pragma once
 
-#pragma warning(disable : 4251)
-
 // winapi
+#include <winsock2.h>
 #include <Wbemidl.h>
 #include <cfgmgr32.h>
-#include <comdef.h>
 #include <newdev.h>
 #include <pdh.h>
 #include <pdhmsg.h>
@@ -15,12 +13,10 @@
 // stl
 #include <algorithm>
 #include <cstdio>
-#include <format>
 #include <functional>
 #include <iostream>
 #include <map>
 #include <new>
-#include <print>
 #include <ranges>
 #include <set>
 #include <sstream>
@@ -30,5 +26,3 @@
 #include <chrono>
 #include <thread>
 
-// json
-#include <nlohmann/json.hpp>

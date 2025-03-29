@@ -5,7 +5,7 @@
 
 namespace dm
 {
-	struct DEVICE_MANAGER_LIB_EXPORT DeviceTreeNode
+    struct DeviceTreeNode
 	{
 		DeviceInfo info;
 		std::vector<DeviceTreeNode> children;

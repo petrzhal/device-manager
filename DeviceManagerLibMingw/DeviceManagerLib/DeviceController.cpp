@@ -10,13 +10,13 @@ namespace dm
 
 		if(!FindDeviceById(deviceId, hDevInfo, devInfoData))
 		{
-			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
+//			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
 
 			return false;
 		}
 
 		bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_ENABLE);
-		SetupDiDestroyDeviceInfoList(hDevInfo);
+        SetupDiDestroyDeviceInfoList(hDevInfo);
 
 		return result;
 	}
@@ -28,13 +28,13 @@ namespace dm
 
 		if(!FindDeviceById(deviceId, hDevInfo, devInfoData))
 		{
-			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
+//			std::cerr << "Device with ID " << deviceId << " not found." << std::endl;
 
 			return false;
 		}
 
 		bool result = ChangeDeviceState(hDevInfo, devInfoData, DICS_DISABLE);
-		SetupDiDestroyDeviceInfoList(hDevInfo);
+        SetupDiDestroyDeviceInfoList(hDevInfo);
 
 		return result;
 	}
@@ -46,7 +46,7 @@ namespace dm
 
 		if(!res)
 		{
-			std::cerr << "UpdateDriverForPlugAndPlayDevices failed for device " << deviceId << std::endl;
+//			std::cerr << "UpdateDriverForPlugAndPlayDevices failed for device " << deviceId << std::endl;
 		}
 
 		return res;
@@ -61,7 +61,7 @@ namespace dm
 	{
 		if(!disableDevice(deviceId))
 		{
-			std::cerr << "Failed to disable device " << deviceId << std::endl;
+//			std::cerr << "Failed to disable device " << deviceId << std::endl;
 
 			return false;
 		}
@@ -70,7 +70,7 @@ namespace dm
 
 		if(!enableDevice(deviceId))
 		{
-			std::cerr << "Failed to enable device " << deviceId << std::endl;
+//			std::cerr << "Failed to enable device " << deviceId << std::endl;
 
 			return false;
 		}
@@ -84,7 +84,7 @@ namespace dm
 
 		if(hDevInfo == INVALID_HANDLE_VALUE)
 		{
-			std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
+//			std::cerr << "SetupDiGetClassDevsA failed." << std::endl;
 
 			return false;
 		}
@@ -117,14 +117,14 @@ namespace dm
 
 		if(!SetupDiSetClassInstallParamsA(hDevInfo, &devInfoData, &propChangeParams.ClassInstallHeader, sizeof(propChangeParams)))
 		{
-			std::cerr << "SetupDiSetClassInstallParamsA failed." << std::endl;
+//			std::cerr << "SetupDiSetClassInstallParamsA failed." << std::endl;
 
 			return false;
 		}
 
 		if(!SetupDiCallClassInstaller(DIF_PROPERTYCHANGE, hDevInfo, &devInfoData))
 		{
-			std::cerr << "SetupDiCallClassInstaller failed." << std::endl;
+//			std::cerr << "SetupDiCallClassInstaller failed." << std::endl;
 
 			return false;
 		}

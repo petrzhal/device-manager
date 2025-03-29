@@ -44,7 +44,7 @@ namespace dm
 				info.status = "Unknown";
 			}
 
-			callback(info);
+            callback(info);
 			devices.push_back(info);
 			++i;
 		}
@@ -100,49 +100,52 @@ namespace dm
 		}
 	}
 
-	DeviceTreeNode DeviceEnumerator::getDeviceTree(const DeviceCallback& deviceCallback) const
+    DeviceTreeNode DeviceEnumerator::getDeviceTree(const DeviceCallback& deviceCallback) const
 	{
-		DeviceTreeNode root;
-		root.info.name = "All devices";
-		root.info.deviceId = "ROOT";
-		root.info.manufacturer = "";
-		root.info.deviceClass = "All";
+        DeviceTreeNode root;
+        root.info.name = "All devices";
+        root.info.deviceId = "ROOT";
+        root.info.manufacturer = "";
+        root.info.deviceClass = "All";
 
-		std::vector<DeviceInfo> devices = enumerateDevices(deviceCallback);
+        std::vector<DeviceInfo> devices = enumerateDevices(deviceCallback);
 
-		std::unordered_map<std::string, DeviceTreeNode> groups;
+        std::map<std::string, DeviceTreeNode> groups;
+        for (const auto& dev : devices)
+        {
+            std::string key = dev.deviceClass.empty() ? "Unknown" : dev.deviceClass;
+            if (groups.find(key) == groups.end())
+            {
+                DeviceTreeNode node;
+                node.info.name = key;
+                node.info.deviceId = key;
+                groups[key] = node;
+            }
 
-		for(const auto& dev : devices)
-		{
-			const std::string key = dev.deviceClass.empty() ? "Unknown" : dev.deviceClass;
+            DeviceTreeNode child;
+            child.info = dev;
+            groups[key].children.push_back(child);
+        }
 
-			if(groups.contains(key))
-			{
-				DeviceTreeNode node;
-				node.info.name = key;
-				node.info.deviceId = key;
+        for (const auto& group : groups)
+        {
+            root.children.push_back(group.second);
+        }
 
-				groups[key] = std::move(node);
-			}
+        DeviceDiagnostic diagnostic;
 
-			DeviceTreeNode child{ .info = dev };
-			groups[key].children.emplace_back(child);
-		}
+        std::set<std::string> visited;
 
-		for(const auto& group : groups | std::views::values)
-		{
-			root.children.push_back(group);
-		}
+        std::function<void(DeviceTreeNode&)> addDeps = [&](DeviceTreeNode& node)
+            {
+                addDependentDevices(node, diagnostic, visited);
+                for (auto& child : node.children)
+                {
+                    addDeps(child);
+                }
+            };
+        addDeps(root);
 
-		DeviceDiagnostic diagnostic;
-		std::set<std::string> visited;
-
-		std::function<void(DeviceTreeNode&)> addDeps = [&](DeviceTreeNode& node) {
-			addDependentDevices(node, diagnostic, visited);
-			std::ranges::for_each(node.children, addDeps);
-		};
-		addDeps(root);
-
-		return root;
+        return root;
 	}
 } // namespace dm

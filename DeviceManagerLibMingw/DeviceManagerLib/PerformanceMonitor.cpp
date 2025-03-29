@@ -13,7 +13,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhOpenQueryA failed. Error code: " << status << std::endl;
+//			std::cerr << "PdhOpenQueryA failed. Error code: " << status << std::endl;
 
 			return -1.0;
 		}
@@ -22,7 +22,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhAddCounterA failed. Error code: " << status << std::endl;
+//			std::cerr << "PdhAddCounterA failed. Error code: " << status << std::endl;
 			PdhCloseQuery(cpuQuery);
 
 			return -1.0;
@@ -32,7 +32,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhCollectQueryData (first sample) failed. Error code: " << status << std::endl;
+//			std::cerr << "PdhCollectQueryData (first sample) failed. Error code: " << status << std::endl;
 			PdhCloseQuery(cpuQuery);
 
 			return -1.0;
@@ -44,7 +44,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhCollectQueryData (second sample) failed. Error code: " << status << std::endl;
+//			std::cerr << "PdhCollectQueryData (second sample) failed. Error code: " << status << std::endl;
 			PdhCloseQuery(cpuQuery);
 
 			return -1.0;
@@ -54,7 +54,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhGetFormattedCounterValue failed. Error code: " << status << std::endl;
+//			std::cerr << "PdhGetFormattedCounterValue failed. Error code: " << status << std::endl;
 			PdhCloseQuery(cpuQuery);
 
 			return -1.0;
@@ -72,7 +72,7 @@ namespace dm
 
 		if(!GlobalMemoryStatusEx(&memStatus))
 		{
-			std::cerr << "GlobalMemoryStatusEx failed." << std::endl;
+//			std::cerr << "GlobalMemoryStatusEx failed." << std::endl;
 
 			return -1.0;
 		}
@@ -86,44 +86,55 @@ namespace dm
 
 	PerformanceMonitor::DisksStorage PerformanceMonitor::getDiskUsage() const
 	{
-		const auto updateDiskInfo = [](const std::string& disk) -> DisksType {
-			ULARGE_INTEGER freeBytesAvailable;
-			ULARGE_INTEGER totalNumberOfBytes;
-			ULARGE_INTEGER totalNumberOfFreeBytes;
+        DWORD driveMask = GetLogicalDrives();
 
-			if(!GetDiskFreeSpaceExA(disk.c_str(), &freeBytesAvailable, &totalNumberOfBytes, &totalNumberOfFreeBytes))
-			{
-				std::println(std::cerr, "GetDiskFreeSpaceEx failed for {}", disk);
+        if (driveMask == 0)
+        {
+//            std::cerr << "GetLogicalDrives failed." << std::endl;
 
-				return {};
-			}
+            return std::map<std::string, float>();
+        }
 
-			uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
-			float usagePercent = (totalNumberOfBytes.QuadPart > 0)
-				? (static_cast<float>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0f
-				: 0.0f;
+        std::map<std::string, float> disksUsage;
 
-			return std::make_pair(disk, usagePercent);
-		};
+        for (int i = 0; i < 26; i++)
+        {
+            if (driveMask & (1 << i))
+            {
+                char driveLetter = 'A' + i;
+                std::string drivePath;
+                drivePath.push_back(driveLetter);
+                drivePath.append(":\\");
 
-		static const auto driveMask = GetLogicalDrives();
+                if (GetDriveTypeA(drivePath.c_str()) != DRIVE_FIXED)
+                {
+                    continue;
+                }
 
-		if(driveMask == 0)
-		{
-			std::println(std::cerr, "GetLogicalDrives failed");
+                ULARGE_INTEGER freeBytesAvailable;
+                ULARGE_INTEGER totalNumberOfBytes;
+                ULARGE_INTEGER totalNumberOfFreeBytes;
 
-			return DisksStorage{};
-		}
+                if (!GetDiskFreeSpaceExA(drivePath.c_str(),
+                    &freeBytesAvailable,
+                    &totalNumberOfBytes,
+                    &totalNumberOfFreeBytes))
+                {
+//                    std::cerr << "GetDiskFreeSpaceExA failed for " << drivePath << std::endl;
 
-		static const auto existedDisks = std::views::iota(0, ('Z' - 'A') + 1) |
-			std::views::filter([&](int i) -> bool { return driveMask & (1 << i); }) |
-			std::views::transform([](int diskN) -> std::string { return std::format("{}:\\", static_cast<char>('A' + diskN)); }) |
-			std::views::filter([](std::string disk) -> bool { return GetDriveTypeA(disk.data()) == DRIVE_FIXED; }) |
-			std::ranges::to<std::vector>();
+                    continue;
+                }
 
-		return existedDisks | 
-			std::views::transform(updateDiskInfo) | 
-			std::ranges::to<DisksStorage>();
+                uint64_t usedBytes = totalNumberOfBytes.QuadPart - totalNumberOfFreeBytes.QuadPart;
+                float usagePercent = (totalNumberOfBytes.QuadPart > 0) ?
+                    (static_cast<float>(usedBytes) / totalNumberOfBytes.QuadPart) * 100.0 :
+                    0.0;
+
+                disksUsage.emplace(drivePath, usagePercent);
+            }
+        }
+
+        return disksUsage;
 	}
 
 	double PerformanceMonitor::getGPUUsage() const
@@ -169,7 +180,7 @@ namespace dm
 			++index;
 		}
 
-		double aggregated = max(max(values[0], values[1]), values[2]);
+        double aggregated = std::max(std::max(values[0], values[1]), values[2]);
 
 		if(aggregated > 100.0)
 		{
@@ -189,7 +200,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhOpenQueryA failed with error code: " << status << std::endl;
+//			std::cerr << "PdhOpenQueryA failed with error code: " << status << std::endl;
 
 			return -1;
 		}
@@ -198,8 +209,8 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhAddCounterA failed for counter \\Network Interface(*)\\Bytes Total/sec"
-				<< " with error code: " << status << std::endl;
+//			std::cerr << "PdhAddCounterA failed for counter \\Network Interface(*)\\Bytes Total/sec"
+//				<< " with error code: " << status << std::endl;
 			PdhCloseQuery(query);
 
 			return -1;
@@ -209,7 +220,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "First PdhCollectQueryData failed with error code: " << status << std::endl;
+//			std::cerr << "First PdhCollectQueryData failed with error code: " << status << std::endl;
 			PdhCloseQuery(query);
 
 			return -1;
@@ -221,7 +232,7 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "Second PdhCollectQueryData failed with error code: " << status << std::endl;
+//			std::cerr << "Second PdhCollectQueryData failed with error code: " << status << std::endl;
 			PdhCloseQuery(query);
 
 			return -1;
@@ -233,7 +244,7 @@ namespace dm
 
 		if(status != PDH_MORE_DATA && status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhGetFormattedCounterArrayA failed to get buffer size, error code: " << status << std::endl;
+//			std::cerr << "PdhGetFormattedCounterArrayA failed to get buffer size, error code: " << status << std::endl;
 			PdhCloseQuery(query);
 
 			return -1;
@@ -246,8 +257,8 @@ namespace dm
 
 		if(status != ERROR_SUCCESS)
 		{
-			std::cerr << "PdhGetFormattedCounterArrayA failed to retrieve data, error code: " << status << std::endl;
-			PdhCloseQuery(query);
+//			std::cerr << "PdhGetFormattedCounterArrayA failed to retrieve data, error code: " << status << std::endl;
+            PdhCloseQuery(query);
 
 			return -1;
 		}

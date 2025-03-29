@@ -4,7 +4,7 @@
 
 namespace dm
 {
-	class DEVICE_MANAGER_LIB_EXPORT DeviceController
+    class DeviceController
 	{
 	public:
 		DeviceController() = default;
