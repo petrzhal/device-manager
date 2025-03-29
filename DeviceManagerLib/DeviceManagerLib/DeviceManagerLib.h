@@ -1,5 +1,7 @@
 #pragma once
 
+#pragma warning(disable: 4251)
+
 // winapi
 #include <windows.h>
 #include <newdev.h>

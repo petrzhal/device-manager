@@ -10,7 +10,6 @@ struct DEVICE_MANAGER_LIB_EXPORT DeviceInfo
     std::string deviceId;
     std::string name;
     std::string manufacturer;
-    std::string driverVersion;
     std::string deviceClass;
     std::string status;
     std::unordered_map<std::string, std::string> additionalProperties;
@@ -19,7 +18,6 @@ struct DEVICE_MANAGER_LIB_EXPORT DeviceInfo
         ostr << std::format("Device Name: {}\n", obj.name)
             << std::format("Device ID: {}\n", obj.deviceId)
             << std::format("Manufacturer: {}\n", obj.manufacturer)
-            << std::format("Driver Version: {}\n", obj.driverVersion)
             << std::format("Status: {}\n", obj.status)
             << std::format("Type: {}\n", obj.deviceClass);
 

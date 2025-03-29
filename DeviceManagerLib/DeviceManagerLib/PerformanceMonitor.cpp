@@ -23,7 +23,7 @@ double PerformanceMonitor::getCPUUsage() const
         return -1.0;
     }
 
-    status = PdhAddCounterA(cpuQuery, "\\Процессор(_Total)\\% загруженности процессора", 0, &cpuTotal);
+    status = PdhAddEnglishCounterA(cpuQuery, "\\Processor(_Total)\\% Processor Time", 0, &cpuTotal);
 
     if (status != ERROR_SUCCESS)
     {
@@ -43,7 +43,7 @@ double PerformanceMonitor::getCPUUsage() const
         return -1.0;
     }
 
-    Sleep(1000);
+    std::this_thread::sleep_for(std::chrono::seconds(2));
 
     status = PdhCollectQueryData(cpuQuery);
 
@@ -110,9 +110,9 @@ std::map<std::string, double> PerformanceMonitor::getDiskUsage() const
         if (driveMask & (1 << i)) 
         {
             char driveLetter = 'A' + i;
-            std::string drivePath;
-            drivePath.push_back(driveLetter);
-            drivePath.append(":\\");
+            std::string drivePath(1, driveLetter);
+            drivePath += ":\\";
+
 
             if (GetDriveTypeA(drivePath.c_str()) != DRIVE_FIXED) 
             {
@@ -198,7 +198,7 @@ double PerformanceMonitor::getGPUUsage() const {
 }
 
 
-double PerformanceMonitor::getNetworkUsage() const 
+int PerformanceMonitor::getNetworkUsage() const 
 {
     PDH_HQUERY query;
     PDH_HCOUNTER counter;
@@ -213,11 +213,11 @@ double PerformanceMonitor::getNetworkUsage() const
         return -1.0;
     }
 
-    status = PdhAddCounterA(query, "\\Сетевой адаптер(*)\\Всего байт/с", 0, &counter);
+    status = PdhAddEnglishCounterA(query, "\\Network Interface(*)\\Bytes Total/sec", 0, &counter);
 
     if (status != ERROR_SUCCESS) 
     {
-        std::cerr << "PdhAddCounterA failed for counter \\Сетевой адаптер(*)\\Всего байт/с"
+        std::cerr << "PdhAddCounterA failed for counter \\Network Interface(*)\\Bytes Total/sec"
             << " with error code: " << status << std::endl;
         PdhCloseQuery(query);
 
@@ -281,7 +281,7 @@ double PerformanceMonitor::getNetworkUsage() const
 
     PdhCloseQuery(query);
 
-    return totalNetworkUsage;
+    return static_cast<int>(totalNetworkUsage);
 }
 
 

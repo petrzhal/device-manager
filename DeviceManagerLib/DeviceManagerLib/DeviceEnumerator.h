@@ -18,8 +18,6 @@ namespace dm {
 
     private:
         std::string getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD property) const;
-        DWORD GetDriverVersion(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData) const;
-        std::string FormatDriverVersion(DWORD dwVersion) const;
     };
 
 } // namespace dm

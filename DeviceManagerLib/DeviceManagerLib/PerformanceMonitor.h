@@ -15,7 +15,7 @@ public:
     double getMemoryUsage() const;
     std::map<std::string, double> getDiskUsage() const;
     double getGPUUsage() const;
-    double getNetworkUsage() const;
+    int getNetworkUsage() const;
 };
 
 } // namespace dm

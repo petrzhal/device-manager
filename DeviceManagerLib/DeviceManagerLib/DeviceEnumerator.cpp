@@ -4,6 +4,7 @@
 
 namespace dm
 {
+
 std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback& callback) const
 {
     std::vector<DeviceInfo> devices;
@@ -17,7 +18,8 @@ std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback&
         return devices;
     }
 
-    SP_DEVINFO_DATA devInfoData{.cbSize = sizeof(devInfoData)};
+    SP_DEVINFO_DATA devInfoData{};
+    devInfoData.cbSize = sizeof(devInfoData);
     DWORD i = 0;
 
     while (SetupDiEnumDeviceInfo(hDevInfo, i, &devInfoData))
@@ -27,23 +29,16 @@ std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback&
         info.name = getDeviceProperty(hDevInfo, devInfoData, SPDRP_DEVICEDESC);
         info.manufacturer = getDeviceProperty(hDevInfo, devInfoData, SPDRP_MFG);
 
-        if (DWORD drvVersion = GetDriverVersion(hDevInfo, devInfoData); drvVersion != 0)
-        {
-            info.driverVersion = FormatDriverVersion(drvVersion);
-        }
-        else
-        {
-            info.driverVersion = "Unknown";
-        }
+        info.deviceClass = getDeviceProperty(hDevInfo, devInfoData, SPDRP_CLASS);
 
         DWORD installState = 0;
         DWORD bufferSize = sizeof(installState);
 
         if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &devInfoData, SPDRP_INSTALL_STATE, NULL,
-              reinterpret_cast<PBYTE>(&installState),
-              bufferSize, &bufferSize))
+            reinterpret_cast<PBYTE>(&installState),
+            bufferSize, &bufferSize))
         {
-            info.status = installState == 0 ? "Installed" : "Not installed";           
+            info.status = installState == 0 ? "Installed" : "Not installed";
         }
         else
         {
@@ -51,7 +46,6 @@ std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback&
         }
 
         callback(info);
-
         devices.push_back(info);
         ++i;
     }
@@ -62,7 +56,7 @@ std::vector<DeviceInfo> DeviceEnumerator::enumerateDevices(const DeviceCallback&
 }
 
 
-std::string DeviceEnumerator::getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA &devInfoData, DWORD property) const
+std::string DeviceEnumerator::getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData, DWORD property) const
 {
     DWORD dataType = 0, bufferSize = 0;
 
@@ -83,6 +77,7 @@ std::string DeviceEnumerator::getDeviceProperty(HDEVINFO hDevInfo, SP_DEVINFO_DA
 
     return "";
 }
+
 
 
 void addDependentDevices(DeviceTreeNode& node,
@@ -155,40 +150,6 @@ DeviceTreeNode DeviceEnumerator::getDeviceTree(const DeviceCallback& deviceCallb
     addDeps(root);
 
     return root;
-}
-
-
-DWORD DeviceEnumerator::GetDriverVersion(HDEVINFO hDevInfo, SP_DEVINFO_DATA& devInfoData) const
-{
-    if (!SetupDiBuildDriverInfoList(hDevInfo, &devInfoData, SPDIT_CLASSDRIVER))
-    {
-        return 0;
-    }
-
-    SP_DRVINFO_DATA drvInfo{.cbSize = sizeof(SP_DRVINFO_DATA)};
-
-    if (!SetupDiGetSelectedDriver(hDevInfo, &devInfoData, &drvInfo))
-    {
-        SetupDiDestroyDriverInfoList(hDevInfo, &devInfoData, SPDIT_CLASSDRIVER);
-        return 0;
-    }
-
-    const auto dwVersion = static_cast<DWORD>(drvInfo.DriverVersion);
-    SetupDiDestroyDriverInfoList(hDevInfo, &devInfoData, SPDIT_CLASSDRIVER);
-
-    return dwVersion;
-}
-
-
-std::string DeviceEnumerator::FormatDriverVersion(DWORD dwVersion) const
-{
-    const auto major = HIWORD(dwVersion);
-    const auto minor = LOWORD(dwVersion);
-    
-    if (major == 0 && minor == 0)
-        return "Unknown";
-
-    return std::format("{}.{}", major, minor);
 }
 
 } // namespace dm

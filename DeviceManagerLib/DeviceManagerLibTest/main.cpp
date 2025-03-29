@@ -1,4 +1,6 @@
-#include "DeviceManagerLib.h"
+﻿#include "DeviceManagerLib.h"
+
+#pragma warning(disable: 4251)
 
 #include <iostream>
 #include <string>
@@ -28,7 +30,8 @@ void printDeviceTree(const dm::DeviceTreeNode& node, int indent = 0)
 }
 
 
-void monitorPerformance() {
+void monitorPerformance()
+{
     dm::PerformanceMonitor perfMonitor;
 
     while (true) 
@@ -55,8 +58,9 @@ void monitorPerformance() {
 int main()
 {
     setlocale(0, "");
+    std::jthread perfThread(monitorPerformance);
 
-    dm::DeviceEnumerator enumerator;
+    /*dm::DeviceEnumerator enumerator;
     std::vector<dm::DeviceInfo> devices;
 
     auto callback = [&devices](const dm::DeviceInfo& device)
@@ -71,7 +75,7 @@ int main()
 
     std::println("\nRoot device name: ", root.info.name);
     std::println("Device Tree:");
-    printDeviceTree(root);
+    printDeviceTree(root);*/
 
 
     //vector<DeviceInfo> devices;
@@ -108,7 +112,6 @@ int main()
     //cout << "Device Tree:\n";
     //printDeviceTree(root);
 
-    //std::jthread perfThread(monitorPerformance);
 
     //DeviceDiagnostic diagnostic;
 
