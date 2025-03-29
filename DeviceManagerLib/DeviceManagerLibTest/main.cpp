@@ -119,7 +119,7 @@ int main()
     //cout << "Device Tree:\n";
     //printDeviceTree(root);
 
-    std::jthread perfThread(monitorPerformance);
+    //std::jthread perfThread(monitorPerformance);
 
     //DeviceDiagnostic diagnostic;
 
