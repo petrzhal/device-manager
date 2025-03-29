@@ -6,33 +6,20 @@
 #include <map>
 #include <thread>
 #include <syncstream>
+#include <print>
 
-using namespace std;
-using namespace dm;
-
-
-void printDeviceTree(const DeviceTreeNode& node, int indent = 0)
+void printDeviceTree(const dm::DeviceTreeNode& node, int indent = 0)
 {
-    string indentStr(indent, ' ');
+    const std::string indentStr(indent, '\t');
 
-    cout << indentStr << "Device Name: " << node.info.name << "\n";
-    cout << indentStr << "Device ID  : " << node.info.deviceId << "\n";
-    cout << indentStr << "Manufacturer: " << node.info.manufacturer << "\n";
-    cout << indentStr << "Driver Version: " << node.info.driverVersion << "\n";
-    cout << indentStr << "Status: " << node.info.status << "\n";
-    cout << indentStr << "Type: " << node.info.deviceClass << "\n";
+    std::stringstream sstr;
+    sstr << node.info << '\n';
 
-    if (!node.info.additionalProperties.empty()) 
+    std::string buf;
+    while(std::getline(sstr, buf)) 
     {
-        cout << indentStr << "Additional Properties:\n";
-
-        for (const auto& prop : node.info.additionalProperties) 
-        {
-            cout << indentStr << "  " << prop.first << ": " << prop.second << "\n";
-        }
+        std::println("{}{}", indentStr, buf);
     }
-
-    cout << "\n";
 
     for (const auto& child : node.children) 
     {
@@ -42,22 +29,23 @@ void printDeviceTree(const DeviceTreeNode& node, int indent = 0)
 
 
 void monitorPerformance() {
-    PerformanceMonitor perfMonitor;
+    dm::PerformanceMonitor perfMonitor;
+
     while (true) 
     {
         system("cls");
 
-        cout << "Системная производительность:\n";
-        cout << "CPU usage: " << perfMonitor.getCPUUsage() << "%\n";
-        cout << "Memory usage: " << perfMonitor.getMemoryUsage() << "%\n";
+        std::println("{:^100}", "System Perfomance");
+        std::println("CPU usage: {}%", perfMonitor.getCPUUsage());
+        std::println("RAM usage: {}%", perfMonitor.getMemoryUsage());
 
         for (const auto& [disk, usagePercent] : perfMonitor.getDiskUsage())
         {
-            cout << "Disk usage: " << disk << " " << usagePercent << "%\n";
+            std::println("Disk usage: {}\t{}%", disk, usagePercent);
         }
         
-        cout << "GPU usage: " << perfMonitor.getGPUUsage() << "%\n";
-        cout << "Network usage: " << perfMonitor.getNetworkUsage() << " B/sec\n";
+        std::println("GPU usage: {}%", perfMonitor.getGPUUsage() );
+        std::println("Network usage: {}B/sec", perfMonitor.getNetworkUsage());
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
@@ -68,38 +56,21 @@ int main()
 {
     setlocale(0, "");
 
-    DeviceEnumerator enumerator;
+    dm::DeviceEnumerator enumerator;
+    std::vector<dm::DeviceInfo> devices;
 
-    vector<DeviceInfo> devices;
-
-    auto callback = [&devices](const DeviceInfo& device)
+    auto callback = [&devices](const dm::DeviceInfo& device)
             {
-                cout << "------------------------------------------\n";
-                cout << "Name: " << device.name << "\n";
-                cout << "Hardware ID: " << device.deviceId << "\n";
-                cout << "Manufacturer: " << device.manufacturer << "\n";
-                cout << "Driver version: " << device.driverVersion << "\n";
-                cout << "Status: " << device.status << "\n";
-                cout << "Type: " << device.deviceClass << "\n";
-
-                if (!device.additionalProperties.empty())
-                {
-                    cout << "Additional properties:\n";
-
-                    for (const auto& prop : device.additionalProperties)
-                    {
-                        cout << "  " << prop.first << ": " << prop.second << "\n";
-                    }
-                }
+                std::println("------------------------------------------");
+                std::cout << device << '\n';
 
                 devices.push_back(device);
             };
 
-    DeviceTreeNode root = enumerator.getDeviceTree(callback);
-    //DeviceTreeNode root;
+    dm::DeviceTreeNode root = enumerator.getDeviceTree(callback);
 
-    cout << "\nRoot device name: " << root.info.name << "\n";
-    cout << "Device Tree:\n";
+    std::println("\nRoot device name: ", root.info.name);
+    std::println("Device Tree:");
     printDeviceTree(root);
 
 

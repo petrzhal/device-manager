@@ -1,10 +1,8 @@
-#ifndef PCH_H
-#define PCH_H
+#pragma once
 
 #pragma warning(disable: 4251)
 
 // winapi
-#ifdef _WIN32
 #include <windows.h>
 #include <newdev.h>
 #include <new>
@@ -15,13 +13,6 @@
 #include <pdh.h>
 #include <pdhmsg.h>
 
-#pragma comment(lib, "setupapi.lib")
-#pragma comment(lib, "wbemuuid.lib")
-#pragma comment(lib, "newdev.lib")
-#pragma comment(lib, "cfgmgr32.lib")
-#pragma comment(lib, "pdh.lib")
-#endif
-
 // stl
 #include <string>
 #include <map>
@@ -31,5 +22,9 @@
 #include <functional>
 #include <sstream>
 #include <set>
-
-#endif // PCH_H
+#include <unordered_map>
+#include <unordered_set>
+#include <ranges>
+#include <algorithm>
+#include <print>
+#include <format>
